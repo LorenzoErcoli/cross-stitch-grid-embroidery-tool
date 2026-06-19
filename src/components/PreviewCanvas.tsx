@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { gridSize } from "../model/grid";
 import type { Cell, DebugOptions, EditorViewState, Edge, EngineOutput, GridConfig, ManualRouteOverride, Point, VertexGraph } from "../model/types";
 import { getAdaptiveVisualSizes } from "../model/visual";
@@ -15,11 +15,13 @@ interface Props {
   selectedPointIndex: number | null;
   manualOverrides: ManualRouteOverride[];
   showManualConnectors: boolean;
+  showOverriddenAutoConnectors: boolean;
   showStitchDebugPoints: boolean;
   showManualPoints: boolean;
   showSnapAreas: boolean;
   showHitAreas: boolean;
   viewState: EditorViewState;
+  clearAllSignal: number;
   onViewStateChange: (viewState: EditorViewState) => void;
   onSelectConnector: (connectorId: string) => void;
   onAddManualPoint: (point: Point) => void;
@@ -41,11 +43,13 @@ export function PreviewCanvas({
   selectedPointIndex,
   manualOverrides,
   showManualConnectors,
+  showOverriddenAutoConnectors,
   showStitchDebugPoints,
   showManualPoints,
   showSnapAreas,
   showHitAreas,
   viewState,
+  clearAllSignal,
   onViewStateChange,
   onSelectConnector,
   onAddManualPoint,
@@ -120,6 +124,14 @@ export function PreviewCanvas({
     ],
     [output],
   );
+  const overriddenConnectorIds = useMemo(
+    () => new Set(manualOverrides.map((override) => override.connectorId)),
+    [manualOverrides],
+  );
+  const overriddenAutoConnectorEdges = useMemo(
+    () => automaticConnectorEdges.filter((edge) => overriddenConnectorIds.has(edge.id)),
+    [automaticConnectorEdges, overriddenConnectorIds],
+  );
   const extraSnapPoints = useMemo(() => {
     const points: Point[] = [];
     for (const point of Object.values(graph.contactPoints ?? {})) {
@@ -166,6 +178,19 @@ export function PreviewCanvas({
     );
     onViewStateChange({ zoom: nextZoom, pan: { x: referenceOffset.x, y: referenceOffset.y } });
   };
+
+  useEffect(() => {
+    setReferenceImage((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+    setReferenceVisible(true);
+    setReferenceLocked(false);
+    setReferenceOpacity(0.35);
+    setReferenceScale(1);
+    setReferenceOffset({ x: 0, y: 0 });
+    setReferenceSize({ width: size.width, height: size.height });
+  }, [clearAllSignal]);
   const zoomPercent = Math.round(zoom * 100);
 
   return (
@@ -198,7 +223,10 @@ export function PreviewCanvas({
                 setReferenceSize({ width: image.naturalWidth, height: image.naturalHeight });
                 setReferenceOffset({ x: 0, y: 0 });
                 setReferenceScale(Math.min(1, size.width / Math.max(1, image.naturalWidth)));
-                setReferenceImage(url);
+                setReferenceImage((current) => {
+                  if (current) URL.revokeObjectURL(current);
+                  return url;
+                });
                 setReferenceVisible(true);
               };
               image.src = url;
@@ -209,7 +237,10 @@ export function PreviewCanvas({
         <button
           type="button"
           onClick={() => {
-            setReferenceImage(null);
+            setReferenceImage((current) => {
+              if (current) URL.revokeObjectURL(current);
+              return null;
+            });
             setReferenceOffset({ x: 0, y: 0 });
             setReferenceScale(1);
             setReferenceOpacity(0.35);
@@ -359,16 +390,37 @@ export function PreviewCanvas({
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="stitch-segment" style={{ strokeWidth: visual.stitchStrokeWidth }} />;
         })}
 
-        {debug.showConnectorSegments && output.coveredConnectorEdges.map((edge) => {
+        {debug.showConnectorSegments && output.coveredConnectorEdges.filter((edge) => !overriddenConnectorIds.has(edge.id)).map((edge) => {
           const start = graph.vertices[edge.startVertex];
           const end = graph.vertices[edge.endVertex];
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="covered-connector-segment" style={{ strokeWidth: visual.connectorStrokeWidth }} />;
         })}
 
-        {debug.showConnectorSegments && output.visibleConnectorEdges.map((edge) => {
+        {debug.showConnectorSegments && output.visibleConnectorEdges.filter((edge) => !overriddenConnectorIds.has(edge.id)).map((edge) => {
           const start = graph.vertices[edge.startVertex];
           const end = graph.vertices[edge.endVertex];
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="visible-connector-segment" style={{ strokeWidth: visual.connectorStrokeWidth }} />;
+        })}
+
+        {showOverriddenAutoConnectors && overriddenAutoConnectorEdges.map((edge) => {
+          const start = graph.vertices[edge.startVertex];
+          const end = graph.vertices[edge.endVertex];
+          if (!start || !end) return null;
+          return (
+            <line
+              key={`overridden-${edge.id}`}
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+              className={`overridden-auto-connector${manualMode ? " selectable" : ""}${selectedConnectorId === edge.id ? " selected" : ""}`}
+              style={{ strokeWidth: visual.connectorStrokeWidth }}
+              onClick={manualMode ? (event) => {
+                event.stopPropagation();
+                onSelectConnector(edge.id);
+              } : undefined}
+            />
+          );
         })}
 
         {manualMode && automaticConnectorEdges.map((edge) => {
@@ -435,25 +487,25 @@ export function PreviewCanvas({
           </g>
         )))}
 
-        {debug.showConnectorSegments && output.contactConnectorEdges.map((edge) => {
+        {debug.showConnectorSegments && output.contactConnectorEdges.filter((edge) => !overriddenConnectorIds.has(edge.id)).map((edge) => {
           const start = graph.vertices[edge.startVertex];
           const end = graph.vertices[edge.endVertex];
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="contact-connector-segment" style={{ strokeWidth: visual.connectorStrokeWidth }} />;
         })}
 
-        {debug.showConnectorSegments && output.verticalVertexConnectorEdges.map((edge) => {
+        {debug.showConnectorSegments && output.verticalVertexConnectorEdges.filter((edge) => !overriddenConnectorIds.has(edge.id)).map((edge) => {
           const start = graph.vertices[edge.startVertex];
           const end = graph.vertices[edge.endVertex];
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="vertical-vertex-connector-segment" style={{ strokeWidth: visual.connectorStrokeWidth }} />;
         })}
 
-        {debug.showConnectorSegments && output.lShapeConnectorEdges.map((edge) => {
+        {debug.showConnectorSegments && output.lShapeConnectorEdges.filter((edge) => !overriddenConnectorIds.has(edge.id)).map((edge) => {
           const start = graph.vertices[edge.startVertex];
           const end = graph.vertices[edge.endVertex];
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="l-shape-connector-segment" style={{ strokeWidth: visual.connectorStrokeWidth }} />;
         })}
 
-        {debug.showConnectorSegments && output.retraceConnectorEdges.map((edge) => {
+        {debug.showConnectorSegments && output.retraceConnectorEdges.filter((edge) => !overriddenConnectorIds.has(edge.id)).map((edge) => {
           const start = graph.vertices[edge.startVertex];
           const end = graph.vertices[edge.endVertex];
           return <line key={edge.id} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className="retrace-connector-segment" style={{ strokeWidth: visual.connectorStrokeWidth }} />;

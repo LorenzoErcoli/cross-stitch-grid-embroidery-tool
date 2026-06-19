@@ -7,6 +7,7 @@ interface Props {
   currentOverride?: ManualRouteOverride;
   disconnectedCount: number;
   showManualConnectors: boolean;
+  showOverriddenAutoConnectors: boolean;
   showStitchDebugPoints: boolean;
   showManualPoints: boolean;
   showSnapAreas: boolean;
@@ -17,6 +18,7 @@ interface Props {
   onApply: () => void;
   onTypeChange: (type: ManualRouteOverride["type"]) => void;
   onShowManualConnectorsChange: (show: boolean) => void;
+  onShowOverriddenAutoConnectorsChange: (show: boolean) => void;
   onShowStitchDebugPointsChange: (show: boolean) => void;
   onShowManualPointsChange: (show: boolean) => void;
   onShowSnapAreasChange: (show: boolean) => void;
@@ -30,6 +32,7 @@ export function ManualRoutingPanel({
   currentOverride,
   disconnectedCount,
   showManualConnectors,
+  showOverriddenAutoConnectors,
   showStitchDebugPoints,
   showManualPoints,
   showSnapAreas,
@@ -40,6 +43,7 @@ export function ManualRoutingPanel({
   onApply,
   onTypeChange,
   onShowManualConnectorsChange,
+  onShowOverriddenAutoConnectorsChange,
   onShowStitchDebugPointsChange,
   onShowManualPointsChange,
   onShowSnapAreasChange,
@@ -61,6 +65,15 @@ export function ManualRoutingPanel({
           <input type="checkbox" checked={showManualConnectors} onChange={() => onShowManualConnectorsChange(!showManualConnectors)} />
           <span className="toggle-track"><span /></span>
           <span>Show manual connectors</span>
+        </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={showOverriddenAutoConnectors}
+            onChange={() => onShowOverriddenAutoConnectorsChange(!showOverriddenAutoConnectors)}
+          />
+          <span className="toggle-track"><span /></span>
+          <span>Show overridden auto connectors</span>
         </label>
         <label className="toggle">
           <input type="checkbox" checked={showStitchDebugPoints} onChange={() => onShowStitchDebugPointsChange(!showStitchDebugPoints)} />

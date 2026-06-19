@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { buildGraph } from "../src/engine/graphBuilder";
+import { applyManualOverrides, getConnectorEdges } from "../src/engine/manualRouting";
 import { generatePattern } from "../src/engine/patternGenerator";
 import { buildContactPointGraph, detectConnectedBlocks, findContactPointConnector, routeGraph } from "../src/engine/routingEngine";
 import { getGridWarnings, setCellOrientation } from "../src/model/grid";
@@ -71,6 +72,26 @@ const directCoveredGraph: VertexGraph = {
   ],
 };
 assert.equal(routeGraph(directCoveredGraph).retraceConnectorEdges.length, 1, "direct pattern overlap must be retraced");
+
+const automaticManualOutput = routeGraph(directCoveredGraph);
+const overriddenConnector = getConnectorEdges(automaticManualOutput)[0];
+const manualResult = applyManualOverrides(directCoveredGraph, automaticManualOutput, [{
+  id: "override-test",
+  connectorId: overriddenConnector.id,
+  originalStart: directCoveredGraph.vertices[overriddenConnector.startVertex],
+  originalEnd: directCoveredGraph.vertices[overriddenConnector.endVertex],
+  points: [{ x: 15, y: 5 }],
+  type: "manualConnector",
+  createdAt: "2026-06-19T00:00:00.000Z",
+  updatedAt: "2026-06-19T00:00:00.000Z",
+}]);
+assert.equal(manualResult.output.manualConnectorEdges.length, 2, "manual override must split the connector around its control point");
+assert.equal(
+  manualResult.output.routeSteps.some((step) => step.edge.id === overriddenConnector.id),
+  false,
+  "the overridden automatic connector must not remain in the final route",
+);
+assert.equal(manualResult.output.finalPath.includes("15 5"), true, "final SVG path data must include the manual point");
 
 const zeroConnectorGraph: VertexGraph = {
   vertices: {

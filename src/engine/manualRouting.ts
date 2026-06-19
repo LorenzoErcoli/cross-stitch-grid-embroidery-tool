@@ -126,6 +126,10 @@ export function applyManualOverrides(
   output: EngineOutput,
   overrides: ManualRouteOverride[],
 ): { output: EngineOutput; disconnected: ManualRouteOverride[] } {
+  for (const vertexId of Object.keys(graph.vertices)) {
+    if (vertexId.startsWith("manual:")) delete graph.vertices[vertexId];
+  }
+
   const connectorById = new Map(getConnectorEdges(output).map((edge) => [edge.id, edge]));
   const overrideByConnector = new Map<string, ManualRouteOverride>();
   const disconnected: ManualRouteOverride[] = [];

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildGraph } from "../src/engine/graphBuilder";
+import { applyManualOverrides, getConnectorEdges } from "../src/engine/manualRouting";
 import { generatePattern } from "../src/engine/patternGenerator";
 import { buildContactPointGraph, detectConnectedBlocks, findContactPointConnector, routeGraph } from "../src/engine/routingEngine";
 import { createCells, getGridWarnings, setCellOrientation } from "../src/model/grid";
@@ -173,6 +174,21 @@ describe("graph-first embroidery engine", () => {
     expect(output.retraceConnectorEdges).toHaveLength(1);
     expect(output.visibleConnectorEdges).toHaveLength(0);
     expect(output.metrics.totalConnectorLength).toBe(10);
+
+    const connector = getConnectorEdges(output)[0];
+    const manual = applyManualOverrides(graph, output, [{
+      id: "override-test",
+      connectorId: connector.id,
+      originalStart: graph.vertices[connector.startVertex],
+      originalEnd: graph.vertices[connector.endVertex],
+      points: [{ x: 15, y: 5 }],
+      type: "manualConnector",
+      createdAt: "2026-06-19T00:00:00.000Z",
+      updatedAt: "2026-06-19T00:00:00.000Z",
+    }]).output;
+    expect(manual.manualConnectorEdges).toHaveLength(2);
+    expect(manual.routeSteps.some((step) => step.edge.id === connector.id)).toBe(false);
+    expect(manual.finalPath).toContain("15 5");
   });
 
   it("routes through graph contact points with covered diagonal returns", () => {

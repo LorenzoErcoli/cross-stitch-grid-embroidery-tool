@@ -71,7 +71,7 @@ const loadAutosavedProject = (): ThreadRouteProjectFile | null => {
 const sanitizeProject = (project: Partial<ThreadRouteProjectFile>): ThreadRouteProjectFile | null => {
   if (!project.grid || !Array.isArray(project.cells) || !project.primitive) return null;
   return {
-    version: "3.2",
+    version: "3.3",
     name: project.name,
     savedAt: project.savedAt ?? new Date().toISOString(),
     grid: project.grid,
@@ -83,6 +83,7 @@ const sanitizeProject = (project: Partial<ThreadRouteProjectFile>): ThreadRouteP
       manualMode: project.editor?.manualMode ?? false,
       showStats: project.editor?.showStats ?? true,
       showManualConnectors: project.editor?.showManualConnectors ?? true,
+      showOverriddenAutoConnectors: project.editor?.showOverriddenAutoConnectors ?? true,
       showStitchDebugPoints: project.editor?.showStitchDebugPoints ?? false,
       showManualPoints: project.editor?.showManualPoints ?? true,
       showSnapAreas: project.editor?.showSnapAreas ?? false,
@@ -108,6 +109,7 @@ export default function App() {
   const [presets, setPresets] = useState(loadPresets);
   const [manualMode, setManualMode] = useState(initialProject?.editor.manualMode ?? false);
   const [showManualConnectors, setShowManualConnectors] = useState(initialProject?.editor.showManualConnectors ?? true);
+  const [showOverriddenAutoConnectors, setShowOverriddenAutoConnectors] = useState(initialProject?.editor.showOverriddenAutoConnectors ?? true);
   const [showStitchDebugPoints, setShowStitchDebugPoints] = useState(initialProject?.editor.showStitchDebugPoints ?? false);
   const [showManualPoints, setShowManualPoints] = useState(initialProject?.editor.showManualPoints ?? true);
   const [showSnapAreas, setShowSnapAreas] = useState(initialProject?.editor.showSnapAreas ?? false);
@@ -119,6 +121,7 @@ export default function App() {
   const [trainingExamples, setTrainingExamples] = useState(loadTrainingExamples);
   const [trainingReason, setTrainingReason] = useState("");
   const [trainingUseful, setTrainingUseful] = useState(true);
+  const [clearAllSignal, setClearAllSignal] = useState(0);
   const warnings = getGridWarnings(grid);
   const activeCellCount = useMemo(() => cells.filter((cell) => cell.enabled).length, [cells]);
 
@@ -138,7 +141,7 @@ export default function App() {
   const currentOverride = manualOverrides.find((override) => override.connectorId === selectedConnectorId);
 
   const createProjectFile = (name?: string): ThreadRouteProjectFile => ({
-    version: "3.2",
+    version: "3.3",
     name,
     savedAt: new Date().toISOString(),
     grid,
@@ -150,6 +153,7 @@ export default function App() {
       manualMode,
       showStats,
       showManualConnectors,
+      showOverriddenAutoConnectors,
       showStitchDebugPoints,
       showManualPoints,
       showSnapAreas,
@@ -169,6 +173,7 @@ export default function App() {
     setManualMode(project.editor.manualMode);
     setShowStats(project.editor.showStats);
     setShowManualConnectors(project.editor.showManualConnectors);
+    setShowOverriddenAutoConnectors(project.editor.showOverriddenAutoConnectors);
     setShowStitchDebugPoints(project.editor.showStitchDebugPoints);
     setShowManualPoints(project.editor.showManualPoints);
     setShowSnapAreas(project.editor.showSnapAreas);
@@ -189,6 +194,7 @@ export default function App() {
     manualMode,
     showStats,
     showManualConnectors,
+    showOverriddenAutoConnectors,
     showStitchDebugPoints,
     showManualPoints,
     showSnapAreas,
@@ -203,10 +209,45 @@ export default function App() {
     setCells((current) => resizeCells(current, nextGrid));
   };
 
+  const resetManualEditor = () => {
+    setManualOverrides([]);
+    setSelectedConnectorId(null);
+    setSelectedPointIndex(null);
+    setManualMode(false);
+    setShowManualConnectors(true);
+    setShowOverriddenAutoConnectors(true);
+    setShowStitchDebugPoints(false);
+    setShowManualPoints(true);
+    setShowSnapAreas(false);
+    setShowHitAreas(false);
+    setTrainingReason("");
+    setTrainingUseful(true);
+  };
+
+  const clearDesign = () => {
+    localStorage.removeItem(autosaveKey);
+    setCells((current) => current.map((cell) => ({ ...cell, enabled: false, orientation: null })));
+    resetManualEditor();
+  };
+
+  const clearAll = () => {
+    localStorage.removeItem(autosaveKey);
+    setGrid(DEFAULT_GRID);
+    setCells(createCells(DEFAULT_GRID));
+    setPrimitive({ type: "alternatingDiagonal", repetitions: 1 });
+    setDebug(initialDebug);
+    setIncludeGrid(false);
+    setShowStats(true);
+    setViewState({ zoom: 1, pan: { x: 0, y: 0 } });
+    resetManualEditor();
+    setClearAllSignal((current) => current + 1);
+  };
+
   const loadPreset = (preset: Preset) => {
     setGrid(preset.grid);
     setCells(preset.cells);
     setPrimitive(preset.primitive);
+    resetManualEditor();
   };
 
   const createOverrideForConnector = (connector: Edge, points: Point[] = []): ManualRouteOverride => {
@@ -314,7 +355,8 @@ export default function App() {
         onGridChange={changeGrid}
         onPrimitiveChange={setPrimitive}
         onDebugChange={setDebug}
-        onClear={() => setCells((current) => current.map((cell) => ({ ...cell, enabled: false, orientation: null })))}
+        onClearDesign={clearDesign}
+        onClearAll={clearAll}
         onFill={() => setCells((current) => current.map((cell) => ({ ...cell, enabled: true, orientation: "diagonalDown" })))}
         warnings={warnings}
       />
@@ -326,6 +368,7 @@ export default function App() {
           currentOverride={currentOverride}
           disconnectedCount={disconnected.length}
           showManualConnectors={showManualConnectors}
+          showOverriddenAutoConnectors={showOverriddenAutoConnectors}
           showStitchDebugPoints={showStitchDebugPoints}
           showManualPoints={showManualPoints}
           showSnapAreas={showSnapAreas}
@@ -341,6 +384,7 @@ export default function App() {
           }}
           onTypeChange={setOverrideType}
           onShowManualConnectorsChange={setShowManualConnectors}
+          onShowOverriddenAutoConnectorsChange={setShowOverriddenAutoConnectors}
           onShowStitchDebugPointsChange={setShowStitchDebugPoints}
           onShowManualPointsChange={setShowManualPoints}
           onShowSnapAreasChange={setShowSnapAreas}
@@ -394,11 +438,13 @@ export default function App() {
           selectedPointIndex={selectedPointIndex}
           manualOverrides={manualOverrides}
           showManualConnectors={showManualConnectors}
+          showOverriddenAutoConnectors={showOverriddenAutoConnectors}
           showStitchDebugPoints={showStitchDebugPoints}
           showManualPoints={showManualPoints}
           showSnapAreas={showSnapAreas}
           showHitAreas={showHitAreas}
           viewState={viewState}
+          clearAllSignal={clearAllSignal}
           onViewStateChange={setViewState}
           onSelectConnector={selectConnector}
           onAddManualPoint={addManualPoint}

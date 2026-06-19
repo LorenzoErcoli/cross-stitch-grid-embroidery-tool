@@ -7,7 +7,8 @@ interface Props {
   onGridChange: (grid: GridConfig) => void;
   onPrimitiveChange: (primitive: PatternPrimitive) => void;
   onDebugChange: (debug: DebugOptions) => void;
-  onClear: () => void;
+  onClearDesign: () => void;
+  onClearAll: () => void;
   onFill: () => void;
   warnings: string[];
 }
@@ -48,7 +49,8 @@ export function ParametersPanel({
   onGridChange,
   onPrimitiveChange,
   onDebugChange,
-  onClear,
+  onClearDesign,
+  onClearAll,
   onFill,
   warnings,
 }: Props) {
@@ -103,7 +105,8 @@ export function ParametersPanel({
         </label>
         <div className="button-row">
           <button className="secondary-button" onClick={onFill}>Fill all</button>
-          <button className="secondary-button" onClick={onClear}>Clear</button>
+          <button className="secondary-button" onClick={onClearDesign}>Clear Design</button>
+          <button className="secondary-button" onClick={onClearAll}>Clear All</button>
         </div>
         {warnings.length > 0 && (
           <div className="warning-box" role="alert">

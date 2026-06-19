@@ -249,7 +249,7 @@ export interface EditorViewState {
 }
 
 export interface ThreadRouteProjectFile {
-  version: "3.2";
+  version: "3.2" | "3.3";
   name?: string;
   savedAt: string;
   grid: GridConfig;
@@ -261,6 +261,7 @@ export interface ThreadRouteProjectFile {
     manualMode: boolean;
     showStats: boolean;
     showManualConnectors: boolean;
+    showOverriddenAutoConnectors: boolean;
     showStitchDebugPoints: boolean;
     showManualPoints: boolean;
     showSnapAreas: boolean;
