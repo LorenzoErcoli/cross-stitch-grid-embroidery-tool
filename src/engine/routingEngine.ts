@@ -692,7 +692,7 @@ function buildLShapeEdges(graph: VertexGraph, current: Vertex, target: Vertex, r
   const verticalFirstCorner = ensureVertex(graph, current.x, target.y);
   const paths: Edge[][] = [];
 
-  const horizontalFirst: Edge[] = [
+  const horizontalFirstDrafts: Edge[] = [
     {
       id: "l-shape-h",
       startVertex: current.id,
@@ -707,9 +707,10 @@ function buildLShapeEdges(graph: VertexGraph, current: Vertex, target: Vertex, r
       type: "lShapeConnector",
       connectorRole: role === "blockChange" ? "blockChange" : "lShape",
     },
-  ].filter((edge) => !isZeroLength(graph, edge));
+  ];
+  const horizontalFirst = horizontalFirstDrafts.filter((edge) => !isZeroLength(graph, edge));
 
-  const verticalFirst: Edge[] = [
+  const verticalFirstDrafts: Edge[] = [
     {
       id: "l-shape-v",
       startVertex: current.id,
@@ -724,7 +725,8 @@ function buildLShapeEdges(graph: VertexGraph, current: Vertex, target: Vertex, r
       type: "lShapeConnector",
       connectorRole: role === "blockChange" ? "blockChange" : "lShape",
     },
-  ].filter((edge) => !isZeroLength(graph, edge));
+  ];
+  const verticalFirst = verticalFirstDrafts.filter((edge) => !isZeroLength(graph, edge));
 
   if (horizontalFirst.length) paths.push(horizontalFirst);
   if (verticalFirst.length) paths.push(verticalFirst);

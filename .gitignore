@@ -3,4 +3,5 @@ dist
 .vite
 *.local
 *.log
+*.tsbuildinfo
 .gh-pages-worktree/
